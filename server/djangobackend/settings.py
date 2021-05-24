@@ -26,7 +26,8 @@ SECRET_KEY = 'ao5z(o(z@cvzodm99d32jkxa5e8a1!q_4sqss5-a%n6tg$#h$+'
 DEBUG = True
 
 ALLOWED_HOSTS = [
-    'cardealer-om.us-south.cf.appdomain.cloud'
+    'cardealer-om.us-south.cf.appdomain.cloud',
+    'localhost'
 ]
 
 
