@@ -126,3 +126,6 @@ STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 MEDIA_ROOT = os.path.join(STATIC_ROOT, 'media')
 MEDIA_URL = '/media/'
+
+NLU_KEY = ""
+NLU_URL = "https://api.us-south.natural-language-understanding.watson.cloud.ibm.com/instances/6c9af90a-9be1-4690-b5d5-3b81c5b78b24"
