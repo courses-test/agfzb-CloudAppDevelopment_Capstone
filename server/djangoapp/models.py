@@ -95,5 +95,5 @@ class DealerReview:
         # Reviewer sentiment
         self.sentiment = sentiment
 
-    """def __str__(self):
-        return "Review name: " + self.name """
+    def __str__(self):
+        return "Review name: " + self.name

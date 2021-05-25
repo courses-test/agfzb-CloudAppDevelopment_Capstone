@@ -7,7 +7,6 @@ from requests.auth import HTTPBasicAuth
 # Create a `get_request` to make HTTP GET requests
 # e.g., response = requests.get(url, params=params, headers={'Content-Type': 'application/json'},
 #                                     auth=HTTPBasicAuth('apikey', api_key))
-
 def get_request(url, apikey = None, **kwargs):
     print(kwargs)
     print("GET from {} ".format(url))
@@ -34,7 +33,6 @@ def get_request(url, apikey = None, **kwargs):
 # def get_dealers_from_cf(url, **kwargs):
 # - Call get_request() with specified arguments
 # - Parse JSON results into a CarDealer object list
-
 def get_dealers_from_cf(url, **kwargs):
     results = []
     json_result = get_request(url)
@@ -54,41 +52,34 @@ def get_dealers_from_cf(url, **kwargs):
 # def get_dealer_by_id_from_cf(url, dealerId):
 # - Call get_request() with specified arguments
 # - Parse JSON results into a DealerView object list
-
-
-# Create an `analyze_review_sentiments` method to call Watson NLU and analyze text
-# def analyze_review_sentiments(text):
-# - Call get_request() with specified arguments
-# - Get the returned sentiment label such as Positive or Negative
-
-
-
-# Create a `post_request` to make HTTP POST requests
-# e.g., response = requests.post(url, params=kwargs, json=payload)
-
 def get_dealer_reviews_from_cf(url, **kwargs):
     results = []
     json_result = get_request(url)
     print(dir(json_result))
+    if json_result["statusCode"] != 200:
+        return results
     if json_result:
         revs = json_result["body"]["results"]
         for review in revs:
             review_obj = models.DealerReview(
-                review['id'],
+                review['_id'],
                 review['dealership'],
                 review['name'],
-                review['purchase'],
+                review['purchase'] if hasattr(review, 'purchase') else False,
                 review['review'],
-                review['purchase_date'],
-                review['car_make'],
-                review['car_model'],
-                review['car_year']
+                review['purchase_date'] if hasattr(review, 'purchase_date') else None,
+                review['car_make'] if hasattr(review, 'car_make') else None,
+                review['car_model'] if hasattr(review, 'car_model') else None,
+                review['car_year'] if hasattr(review, 'car_year') else None
             )
             review_obj.sentiment = analyze_review_sentiments(review_obj.review)
             results.append(review_obj)
     return results
 
-# `analyze_review_sentiments` method to call Watson NLU and analyze text
+# Create an `analyze_review_sentiments` method to call Watson NLU and analyze text
+# def analyze_review_sentiments(text):
+# - Call get_request() with specified arguments
+# - Get the returned sentiment label such as Positive or Negative
 def analyze_review_sentiments(dealer_review):
     json_data = get_request(
         url=settings.NLU_URL + "/v1/analyze",
@@ -100,3 +91,29 @@ def analyze_review_sentiments(dealer_review):
         language='en'
     )
     return json_data['sentiment']['document']['label']
+
+
+# Create a `post_request` to make HTTP POST requests
+# e.g., response = requests.post(url, params=kwargs, json=payload)
+def post_request(url, json_payload, apikey = None, **kwargs):
+    print(kwargs)
+    print("POST from {} ".format(url))
+    try:
+        if apikey:
+            # Call get method of requests library with URL and parameters
+            response = requests.post(url, json=json_payload,  headers={'Content-Type': 'application/json'},
+            auth=HTTPBasicAuth('apikey', apikey), params=kwargs)
+        else:
+            # Call get method of requests library with URL and parameters
+            response = requests.post(url, json=json_payload, headers={'Content-Type': 'application/json'},
+                                        params=kwargs)
+    except:
+        # If any error occurs
+        print("Network exception occurred")
+    status_code = response.status_code
+    print("With status {} ".format(status_code))
+    print(json.dumps(response.text))
+    json_data = json.loads(response.text)
+    return json_data
+
+

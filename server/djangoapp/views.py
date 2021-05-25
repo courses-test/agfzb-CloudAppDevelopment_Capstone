@@ -7,6 +7,8 @@ from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth import login, logout, authenticate
 from django.contrib import messages
 from datetime import datetime
+from django.conf import settings
+from . import models
 from . import restapis
 import logging
 import json
@@ -96,24 +98,54 @@ def registration_request(request):
 def get_dealerships(request):
     context = { 'user': request.user }
     if request.method == "GET":
-        url = "	https://ea65c162.us-south.apigw.appdomain.cloud/api/dealership"
+        url = settings.CLOUD_URL + "/dealership"
         # Get dealers from the URL
         dealerships = restapis.get_dealers_from_cf(url)
         # Concat all dealer's short name
         dealer_names = ' '.join([dealer.short_name for dealer in dealerships])
         # Return a list of dealer short name
-        return HttpResponse(dealer_names)
-        #return render(request, 'djangoapp/index.html', context)
+        context['dealers'] = dealerships
+        # return HttpResponse(dealer_names)
+        return render(request, 'djangoapp/index.html', context)
 
 
 # Create a `get_dealer_details` view to render the reviews of a dealer
 def get_dealer_details(request, dealer_id):
     context = { 'user': request.user }
-    url = "https://ea65c162.us-south.apigw.appdomain.cloud/api/reviews?dealerId=" + str(dealer_id)
+    url = settings.CLOUD_URL + "/reviews?dealerId=" + str(dealer_id)
     reviews = restapis.get_dealer_reviews_from_cf(url)
-    return HttpResponse(reviews)
+    context['reviews'] = reviews
+    context['dealer_id'] = dealer_id
+    return render(request, 'djangoapp/dealer_details.html', context)
 
 # Create a `add_review` view to submit a review
 # def add_review(request, dealer_id):
-# ...
+def add_review(request, dealer_id):    
+    if request.method == "GET":
+        context = dict()
+        context['user'] = request.user
+        context['dealer_id'] = dealer_id
+        context['cars'] = models.CarModel.objects.filter(dealerId=dealer_id)
+        return render(request, 'djangoapp/add_review.html', context)
+    elif request.method == "POST":
+        # Validations
+        if not request.user.is_authenticated:
+            return HttpResponseForbidden("Please login to post reviews")
+            return HttpResponseForbidden("Post only endpoint")
+        if request.POST['review'] == "":
+            return redirect("djangoapp:dealer_details", dealer_id=dealer_id)
 
+        # Store review
+        review = dict()
+        review['name'] = request.user.first_name + " " + request.user.last_name
+        review["time"] = datetime.utcnow().isoformat()
+        review['dealership'] = dealer_id
+        review['review'] = request.POST['review']
+        json_payload = dict()
+        json_payload["review"] = review
+        result = restapis.post_request(settings.CLOUD_URL + '/reviews', 
+            json_payload, apikey=None, dealerId=dealer_id)
+        
+        # Return result
+        return redirect('djangoapp:add_review', dealer_id)
+        #return HttpResponse(result) 
