@@ -9,5 +9,9 @@
 #
 import sys
 
+# Prepare clodant results action
 def main(dict):
-    return { 'message': 'Hello world' }
+    if dict and dict.docs:
+        return { "results": dict.docs }
+    else:
+        return { "results": []}
