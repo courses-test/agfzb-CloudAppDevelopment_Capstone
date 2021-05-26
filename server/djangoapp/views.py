@@ -113,9 +113,15 @@ def get_dealerships(request):
 def get_dealer_details(request, dealer_id):
     context = { 'user': request.user }
     url = settings.CLOUD_URL + "/reviews?dealerId=" + str(dealer_id)
+    url_dealer = settings.CLOUD_URL + "/get-dealer?dealerId=" + str(dealer_id)
     reviews = restapis.get_dealer_reviews_from_cf(url)
     context['reviews'] = reviews
     context['dealer_id'] = dealer_id
+    dealers_found = restapis.get_dealers_from_cf(url_dealer)
+    if len(dealers_found) > 0:
+        context['dealer_name'] = dealers_found[0].full_name
+    else:
+        context['dealer_name'] = ""
     return render(request, 'djangoapp/dealer_details.html', context)
 
 # Create a `add_review` view to submit a review
@@ -125,13 +131,18 @@ def add_review(request, dealer_id):
         context = dict()
         context['user'] = request.user
         context['dealer_id'] = dealer_id
-        context['cars'] = models.CarModel.objects.filter(dealerId=dealer_id)
+        context['cars'] = models.CarModel.objects.filter(dealerId=int(dealer_id))
+        url_dealer = settings.CLOUD_URL + "/get-dealer?dealerId=" + str(dealer_id)
+        dealers_found = restapis.get_dealers_from_cf(url_dealer)
+        if len(dealers_found) > 0:
+            context['dealer_name'] = dealers_found[0].full_name
+        else:
+            context['dealer_name'] = ""
         return render(request, 'djangoapp/add_review.html', context)
     elif request.method == "POST":
         # Validations
         if not request.user.is_authenticated:
             return HttpResponseForbidden("Please login to post reviews")
-            return HttpResponseForbidden("Post only endpoint")
         if request.POST['review'] == "":
             return redirect("djangoapp:dealer_details", dealer_id=dealer_id)
 
@@ -141,11 +152,22 @@ def add_review(request, dealer_id):
         review["time"] = datetime.utcnow().isoformat()
         review['dealership'] = dealer_id
         review['review'] = request.POST['review']
+        if 'purchase' in request.POST:
+            # payload if uer purchased a car
+            review['purchase'] = True
+            review['purchase_date'] = request.POST['date']
+            car_id = request.POST['car']
+            purchased_car = models.CarModel.objects.get(pk=car_id)
+            review['car_make'] = purchased_car.maker.name
+            review['car_model'] = purchased_car.name
+            review['car_year'] = purchased_car.year.strftime("%Y")
+        else:
+            review['purchase'] = False
         json_payload = dict()
         json_payload["review"] = review
         result = restapis.post_request(settings.CLOUD_URL + '/reviews', 
             json_payload, apikey=None, dealerId=dealer_id)
         
         # Return result
-        return redirect('djangoapp:add_review', dealer_id)
+        return redirect('djangoapp:dealer_details', dealer_id)
         #return HttpResponse(result) 

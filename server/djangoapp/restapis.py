@@ -22,6 +22,7 @@ def get_request(url, apikey = None, **kwargs):
     except:
         # If any error occurs
         print("Network exception occurred")
+        return None
     status_code = response.status_code
     print("With status {} ".format(status_code))
     json_data = json.loads(response.text)
@@ -45,7 +46,6 @@ def get_dealers_from_cf(url, **kwargs):
                                    short_name=dealer_doc["short_name"],
                                    st=dealer_doc["st"], zip=dealer_doc["zip"])
             results.append(dealer_obj)
-
     return results
 
 # Create a get_dealer_reviews_from_cf method to get reviews by dealer id from a cloud function
@@ -65,12 +65,12 @@ def get_dealer_reviews_from_cf(url, **kwargs):
                 review['_id'],
                 review['dealership'],
                 review['name'],
-                review['purchase'] if hasattr(review, 'purchase') else False,
+                review['purchase'],
                 review['review'],
-                review['purchase_date'] if hasattr(review, 'purchase_date') else None,
-                review['car_make'] if hasattr(review, 'car_make') else None,
-                review['car_model'] if hasattr(review, 'car_model') else None,
-                review['car_year'] if hasattr(review, 'car_year') else None
+                review['purchase_date'] if 'purchase_date' in review else None,
+                review['car_make'] if 'car_make' in review else None,
+                review['car_model'] if 'car_model' in review else None,
+                review['car_year'] if 'car_year' in review else None
             )
             review_obj.sentiment = analyze_review_sentiments(review_obj.review)
             results.append(review_obj)
@@ -115,5 +115,4 @@ def post_request(url, json_payload, apikey = None, **kwargs):
     print(json.dumps(response.text))
     json_data = json.loads(response.text)
     return json_data
-
 
